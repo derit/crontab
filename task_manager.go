@@ -101,6 +101,7 @@ func (job *TaskManager) Stop(keys ...string) {
 			if so.IsRunning() {
 				so.stop()
 				job.opt.logger.Infof("Stop All Task :%s - %s", so.taskId, so.title)
+				job.done <- struct{}{}
 			}
 			return true
 		})
