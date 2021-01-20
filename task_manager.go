@@ -1,11 +1,10 @@
 package crontab
 
 import (
-	"context"
-	"github.com/gohouse/golib/t"
-	"github.com/sirupsen/logrus"
+	"context" 
 	"sync"
 	"sync/atomic"
+	"strconv"
 )
 
 var incId int64
@@ -26,7 +25,7 @@ func NewTaskManager(opts ...OptionHandleFunc) *TaskManager {
 		item(opt)
 	}
 	if opt.logger == nil {
-		opt.logger = logrus.New()
+		opt.logger =  &DefaultLogger{}
 	}
 	return newTaskManager(opt)
 }
@@ -36,7 +35,8 @@ func newTaskManager(opt *Options) *TaskManager {
 }
 
 func (job *TaskManager) Add(title string, cron *CronTab, callback HandleFunc, args ...interface{}) string {
-	var taskId = t.New(GetId()).String()
+	id:= strconv.FormatInt(GetId(),10)
+	var taskId = id
 	args = append(args, taskId, "-", title)
 	cron.opt = job.opt
 	var so = TaskObject{
@@ -47,7 +47,7 @@ func (job *TaskManager) Add(title string, cron *CronTab, callback HandleFunc, ar
 		taskId:   taskId,
 	}
 	job.store.Store(taskId, &so)
-	job.opt.logger.Infof("添加任务:%s - %s", taskId, title)
+	job.opt.logger.Infof("Add Task :%s - %s", taskId, title)
 	return taskId
 }
 
@@ -62,7 +62,7 @@ func (job *TaskManager) Start(keys ...string) {
 			job.wg.Add(1)
 			go so.start()
 			job.wg.Done()
-			job.opt.logger.Infof("开始任务:%s - %s", so.taskId, so.title)
+			job.opt.logger.Infof("Start Task :%s - %s", so.taskId, so.title)
 		}
 	} else {
 		job.store.Range(func(key, value interface{}) bool {
@@ -70,7 +70,7 @@ func (job *TaskManager) Start(keys ...string) {
 			var so = value.(*TaskObject)
 			go so.start()
 			job.wg.Done()
-			job.opt.logger.Infof("开始任务:%s - %s", so.taskId, so.title)
+			job.opt.logger.Infof("Start All Task :%s - %s", so.taskId, so.title)
 			return true
 		})
 	}
@@ -87,7 +87,7 @@ func (job *TaskManager) Stop(keys ...string) {
 			var so = r.(*TaskObject)
 			if so.IsRunning() {
 				so.stop()
-				job.opt.logger.Infof("停止任务:%s - %s", so.taskId, so.title)
+				job.opt.logger.Infof("Stop Task :%s - %s", so.taskId, so.title)
 			}
 		}
 	} else {
@@ -96,29 +96,20 @@ func (job *TaskManager) Stop(keys ...string) {
 			so.stop()
 			if so.IsRunning() {
 				so.stop()
-				job.opt.logger.Infof("停止任务:%s - %s", so.taskId, so.title)
+				job.opt.logger.Infof("Stop All Task :%s - %s", so.taskId, so.title)
 			}
 			return true
 		})
 	}
-	//// 判断是否还有任务
-	//var jobs int
-	//job.store.Range(func(key, value interface{}) bool {
-	//	jobs++
-	//	return true
-	//})
-	//if jobs == 0 {
-	//	job.done <- struct{}{}
-	//}
 }
 
 func (job *TaskManager) Remove(keys ...string) {
 	if len(keys) > 0 {
 		job.Stop(keys[0])
 		job.store.Delete(keys[0])
-		job.opt.logger.Infof("删除任务:%s", keys[0])
+		job.opt.logger.Infof("Remove Task :%s", keys[0])
 	} else {
-		job.opt.logger.Infof("删除所有任务")
+		job.opt.logger.Infof("Remove All Task")
 		job.Stop()
 		*job = *newTaskManager(job.opt)
 	}

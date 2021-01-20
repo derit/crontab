@@ -2,11 +2,15 @@ package crontab
 
 import (
 	"context"
-	"github.com/sirupsen/logrus"
 	"sync/atomic"
 	"time"
 )
 
+type Options struct {
+	logger Logger
+}
+
+type OptionHandleFunc func(options *Options)
 type CronType int
 
 const (
@@ -39,6 +43,26 @@ type CronTab struct {
 	runTimes     int64
 }
 
+type Logger interface {
+	Infof(format string, args ...interface{})
+}
+
+type DefaultLogger struct {
+}
+
+func SetLogger(logger Logger) OptionHandleFunc {
+	if logger == nil {
+		logger = &DefaultLogger{}
+	}
+	return func(options *Options) {
+		options.logger = logger
+	}
+}
+
+func (l *DefaultLogger) Infof(format string, args ...interface{}) {
+
+}
+
 func NewCronTab(cron CronType, opts ...OptionHandleFunc) *CronTab {
 	var opt = &Options{}
 	for _, item := range opts {
@@ -56,7 +80,6 @@ func NewCronTab(cron CronType, opts ...OptionHandleFunc) *CronTab {
 	}
 }
 
-// RunOnceFirst 先运行一次
 func (ct *CronTab) RunOnceFirst(b ...bool) *CronTab {
 	if len(b) > 0 {
 		ct.runOnceFirst = b[0]
@@ -122,13 +145,13 @@ func (ct *CronTab) RunTimes() int64 {
 
 func (ct *CronTab) Run(h HandleFunc, args ...interface{}) {
 	if ct.opt.logger == nil {
-		ct.opt.logger = logrus.New()
+		ct.opt.logger = &DefaultLogger{}
 	}
 	ct.running = true
 	if ct.runOnceFirst {
 		go h(args...)
 		atomic.AddInt64(&ct.runTimes, 1)
-		ct.opt.logger.Infof("第%v次执行任务:%v", ct.runTimes, args)
+		ct.opt.logger.Infof("Task %v :\n", ct.runTimes, args)
 	}
 	for {
 		now := time.Now()
@@ -138,13 +161,11 @@ func (ct *CronTab) Run(h HandleFunc, args ...interface{}) {
 		select {
 		case <-ct.ctx.Done():
 			ct.running = false
-			//log.Println("done ...")
 			return
 		case <-t.C:
-			//以下为定时执行的操作
 			go h(args...)
 			atomic.AddInt64(&ct.runTimes, 1)
-			ct.opt.logger.Infof("第%v次执行任务:%v", ct.runTimes, args)
+			ct.opt.logger.Infof("Task %v :\n", ct.runTimes, args)
 		}
 	}
 }

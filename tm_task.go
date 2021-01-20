@@ -11,24 +11,24 @@ type TaskObject struct {
 	taskId   string
 }
 
-func (so *TaskObject) start() {
-	if so.cron.running == true {
+func (to *TaskObject) start() {
+	if to.cron.running == true {
 		return
 	}
 	ctx, cancel := context.WithCancel(context.Background())
-	so.cron.ctx = ctx
-	so.cancel = cancel
-	so.cron.Run(so.callback, so.args...)
+	to.cron.ctx = ctx
+	to.cancel = cancel
+	to.cron.Run(to.callback, to.args...)
 }
-func (so *TaskObject) stop() {
-	if so.cron.running == false {
+func (to *TaskObject) stop() {
+	if to.cron.running == false {
 		return
 	}
-	(so.cancel)()
+	(to.cancel)()
 }
-func (so *TaskObject) IsRunning() bool {
-	return so.cron.IsRunning()
+func (to *TaskObject) IsRunning() bool {
+	return to.cron.IsRunning()
 }
-func (so *TaskObject) Title() string {
-	return so.title
+func (to *TaskObject) Title() string {
+	return to.title
 }
