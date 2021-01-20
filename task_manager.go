@@ -78,7 +78,10 @@ func (job *TaskManager) Start(keys ...string) {
 
 func (job *TaskManager) Wait() {
 	job.wg.Wait()
-	select {}
+	select {
+		case <-job.done:
+		return 
+	}
 }
 
 func (job *TaskManager) Stop(keys ...string) {
